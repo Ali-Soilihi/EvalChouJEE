@@ -51,11 +51,10 @@ public class UberApi {
         EntityManager entityManager = EntityManagerFactorySingleton
                 .getInstance().createEntityManager();
 
-        Query query= entityManager.createQuery("select d from UberDriver d ");
-        uberDrivers=query.getResultList();
-
-
-         for (UberDriver uberDriver:uberDrivers) {
+        // sur une vraie db, cela engendrerait plein de travail pour le serveur inutile , pourquoi ne pas silmplement filtrer  dans la requete 
+        //Query query= entityManager.createQuery("select d from UberDriver d ");
+        //uberDrivers=query.getResultList();
+        /*for (UberDriver uberDriver:uberDrivers) {
 
             if(uberDriver.getAvalable()){
 
@@ -79,14 +78,35 @@ public class UberApi {
             }
         }
 
-        return null;
+        return null;*/
+        List<UberDriver> uberDrivers = (List<UberDriver>) em.createQuery("SELECT u From UberDriver u WHERE u.available = true").setMaxResults(1).getResultList();
+        if (!uberDriverList.isEmpty()) {
+            Booking booking = new Booking();
+            em.getTransaction().begin();
+            UberDriver uberDriver = uberDriverList.get(0);
+            booking.setUberDriver(uberDriver);
+            booking.setUberUser(uberUser);
+            booking.setStartOfBooking(new Date());
+            uberDriver.setAvailable(false);
+            em.persist(uberDriver);
+            em.persist(booking);
+            em.getTransaction().commit();
+            em.close();
+            return booking;
+        } else return null;
+        
+
+
+         
     }
     public static void finishBooking(Booking booking){
 
         EntityManager entityManager = EntityManagerFactorySingleton
                 .getInstance().createEntityManager();
 
-        Query query= entityManager.createQuery("select b from Booking b");
+        //meme remarque qu'au dessus, la requete SQL est le meilleur endroit pour filtrer les résultats
+        // et le booking n est pas dit finit (endOfBooking)
+        /*Query query= entityManager.createQuery("select b from Booking b");
         bookings=query.getResultList();
 
 
@@ -109,14 +129,26 @@ public class UberApi {
                 }
 
             }
-        }
+        }*/
+         EntityManager em = emf.createEntityManager();
+        em.getTransaction().begin();
+        Query query = em.createQuery("SELECT b FROM Booking b WHERE b= :booking");
+        query.setParameter("booking", booking);
+        Booking result = (Booking) query.getSingleResult();
+        result.setEndOfBooking(new Date());
+        em.persist(result);
+        UberDriver uberDriver = result.getUberDriver();
+        uberDriver.setAvailable(true);
+        em.persist(uberDriver);
+        em.getTransaction().commit();
+        em.close();
 
     }
     public static void evaluateDriver(Booking booking,int evaluation){
 
         EntityManager entityManager = EntityManagerFactorySingleton
                 .getInstance().createEntityManager();
-
+/* idem
         Query query= entityManager.createQuery("select b from Booking b");
         bookings=query.getResultList();
 
@@ -139,12 +171,22 @@ public class UberApi {
                 }
 
             }
-        }
+        }*/
+        EntityManager em = emf.createEntityManager();
+        em.getTransaction().begin();
+        Query query = em.createQuery("SELECT b FROM Booking b WHERE b= :booking");
+        query.setParameter("booking", booking);
+        Booking booking = (Booking) query.getSingleResult();
+
+        booking.setScore(evaluation);
+        em.persist(result);
+        em.getTransaction().commit();
+        em.close();
 
 
     }
     public static List<Booking> listDriverBookings(UberDriver uberDriver){
-
+/* idem
         List<Booking> listDriverBookings=new ArrayList<>();
 
         EntityManager entityManager = EntityManagerFactorySingleton
@@ -162,7 +204,13 @@ public class UberApi {
 
                 listDriverBookings.add(bookingBDD);
             }
-        }
+        }*/
+        EntityManager em = emf.createEntityManager();
+        List<Booking> driverBookings = (List<Booking>) em.createQuery("SELECT b FROM Booking b where b.uberDriver = :uberDriver")
+            .setParameter("uberDriver", uberDriver)
+            .getResultList();
+        em.close();
+        return driverBookings;
 
         return listDriverBookings;
     }
